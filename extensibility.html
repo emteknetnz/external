@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>CMS 7 admin: module YAML and JS</title>
+<script>
+(function(){
+  function strip(){
+    var el=document.getElementById('emt-invert');
+    if(el)el.remove();
+  }
+  strip();
+  new MutationObserver(strip).observe(document,{childList:true,subtree:true});
+})();
+</script>
+<style>
+/* overview-page base - verbatim from standards/overview-page.md. Add local rules after the end line. */
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --line:#2a3342; --text:#bec6d1; --dim:#8b97a8;
+  --accent:#6cb6ff; --green:#56d364; --amber:#e3b341; --red:#ff7b72; --violet:#bc8cff; --teal:#39c5cf;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+code,pre{font-family:var(--mono);font-size:.88em}
+code{background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:1px 5px;color:#dbe2eb}
+pre{background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow:auto;margin:10px 0;line-height:1.5}
+pre code{background:none;border:0;padding:0}
+/* layout: a sticky nav column and a main column */
+.layout{display:grid;grid-template-columns:270px 1fr;min-height:100vh}
+nav{position:sticky;top:0;height:100vh;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:18px 14px}
+nav h1{font-size:15px;margin:0 0 10px;letter-spacing:.02em}
+nav .grp{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:14px 0 4px}
+nav a{display:block;padding:3px 8px;border-radius:5px;color:var(--text);font-size:13.5px;border-left:2px solid transparent}
+nav a:hover{background:var(--panel2);text-decoration:none}
+nav a.indent{padding-left:22px;font-size:13px;color:var(--dim)}
+nav a.on{background:var(--panel2);border-left-color:var(--accent);color:#fff}
+nav a.page,nav a.page:hover{text-decoration:underline;color:var(--accent)}
+main{padding:34px 44px 90px;max-width:1040px}
+footer{color:var(--dim);font-size:13px;margin-top:60px;border-top:1px solid var(--line);padding-top:14px}
+/* headings and text */
+h2{font-size:24px;margin:52px 0 6px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h2:first-of-type{margin-top:0}
+h3{font-size:17px;margin:22px 0 6px}
+p{margin:8px 0}
+ul,ol{margin:4px 0;padding-left:20px}
+li{margin:2px 0}
+.lead{color:var(--dim);font-size:16px}
+.subtitle{color:var(--dim);margin:0 0 8px}
+/* cards, field lists and callouts */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin:16px 0}
+.card h3{margin:0 0 4px;font-size:18px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.card h3 code{font-size:.9em;color:var(--accent)}
+.card h4{font-size:15px;margin:18px 0 6px}
+dl{display:grid;grid-template-columns:110px 1fr;gap:6px 14px;margin:10px 0 0}
+dt{color:var(--dim);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+dd{margin:0}
+.note,.info{border-left:3px solid var(--amber);background:#1d1a10;padding:8px 12px;border-radius:0 6px 6px 0;margin:12px 0}
+.info{border-left-color:var(--accent);background:#0f1b2b}
+/* tables, and the step table */
+table{border-collapse:collapse;width:100%;margin:10px 0;font-size:14px}
+th,td{border:1px solid var(--line);padding:6px 10px;text-align:left;vertical-align:top}
+th{background:var(--panel2);font-weight:600}
+td code{white-space:nowrap}
+.key th:first-child{min-width:175px}
+.steps td:first-child,.steps td:nth-child(2){width:1%;white-space:nowrap}
+.steps td.n{color:var(--dim)}
+.steps tr.sub-row td{border-top-style:dashed}
+.steps .who{font-size:12px;color:var(--dim);margin-top:4px;line-height:1.4}
+.steps .who code{font-size:11.5px}
+/* tag: a small outlined label beside a card title */
+.tag{white-space:nowrap;font-size:11px;font-weight:600;border-radius:99px;padding:1px 9px;border:1px solid;letter-spacing:.03em}
+.tag.blue{color:var(--accent);border-color:#2b5e92}
+.tag.green{color:var(--green);border-color:#2a6a35}
+.tag.amber{color:var(--amber);border-color:#7a6220}
+.tag.red{color:var(--red);border-color:#8a3a35}
+.tag.violet{color:var(--violet);border-color:#5a4585}
+.tag.teal{color:var(--teal);border-color:#206e75}
+.tag.dim{color:var(--dim);border-color:#4a5568}
+.tag.opt{border-style:dashed}
+/* pill: the worker that runs a step. Colour is the model family, data-effort is the effort */
+.pill{display:inline-block;position:relative;font-size:13px;padding:3px 10px;border:1px solid #5b6678;border-radius:6px;background:var(--panel2);color:var(--text)}
+.pill a{color:inherit}
+.pill.blue{background:#12294d;border-color:#4c9aff;color:#cfe3ff}
+.pill.green{background:#16361d;border-color:#4cc360;color:#c4f2cc}
+.pill.violet{background:#321e5c;border-color:#a56cf0;color:#e6d4ff}
+.pill.orange{background:#4d2606;border-color:#ff8a1f;color:#ffd2a8}
+.pill.teal{background:#0f3a3d;border-color:#39c5cf;color:#c8f4f7}
+.pill.amber{background:#3d2e0a;border-color:#e3b341;color:#ffe9b0}
+.pill.red{background:#4d1c1a;border-color:#ff7b72;color:#ffd0cc}
+.pill.gate{background:transparent;border-color:var(--amber);color:#fff}
+.pill.outline{background:transparent;border-color:#b8c0cc;color:#b8c0cc}
+.pill[data-effort]{padding-right:34px}
+.pill[data-effort]::after{content:attr(data-effort);position:absolute;top:0;right:0;bottom:0;width:24px;display:flex;align-items:center;justify-content:center;border-radius:0 5px 5px 0;background:rgba(0,0,0,.4);color:#fff;font-size:11px;font-weight:800}
+.pill.opt{border-style:dashed}
+@media(max-width:860px){.layout{grid-template-columns:1fr}nav{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line)}main{padding:24px 18px 70px}dl{grid-template-columns:1fr}td code{white-space:normal;overflow-wrap:anywhere}}
+/* overview-page base end */
+/* source line: the plan pages a section is drawn from */
+.source{color:#8b97a8;font-size:12px;line-height:1.4;margin:6px 0 10px}
+/* pair: two code examples side by side, such as PHP and JS */
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.pair>div{min-width:0}
+@media(max-width:860px){.pair{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav aria-label="Sections">
+  <h1>Module YAML and JS</h1>
+  <a class="page" href="rendering.html">Rendering</a>
+  <a class="page" href="form.html">Form</a>
+  <div class="grp">Start here</div>
+  <a href="#basis">The basis</a>
+  <div class="grp">The proposal</div>
+  <a href="#react-only">1. React only</a>
+  <a href="#registry">2. Replace a component</a>
+  <a href="#extensions">3. JS extensions</a>
+  <a href="#slots">4. Slots</a>
+  <a href="#checked">5. Checked against real code</a>
+  <a href="#minor">Minor points</a>
+</nav>
+<main>
+<p class="lead">How a CMS 7 module replaces, extends and adds to admin UI components. The aims: a simple API, one way to do each thing, and YAML config that Silverstripe developers already know. A module writes React components and YAML. It has no entry file, no <code>setup()</code> function and no JS registration API.</p>
+
+<h2 id="basis">The basis</h2>
+<p class="source">Source: plan/index.md (section 5), plan/level5.md</p>
+<div class="card">
+<ul>
+<li>Native ES modules and one import map that PHP writes before the first module script.</li>
+<li><code>react</code>, <code>react-dom</code> and <code>@silverstripe/admin</code> are shared through the import map. Modules do not bundle them.</li>
+<li>A module can ship without a build step. Silverstripe publishes TypeScript types and a starter repo, not a build config or a CLI.</li>
+<li>YAML replaces <code>extra_requirements_javascript</code>.</li>
+<li>The module contract below must be right before CMS 7 ships. The loader can change at any time.</li>
+</ul>
+</div>
+
+<h2 id="react-only">1. React only</h2>
+<p class="source">Source: plan/level5.md ("The module contract")</p>
+<div class="card">
+<p>Core accepts React components only. It does not accept objects with mount and unmount functions or custom elements, and it supplies no converters for other frameworks.</p>
+<ul>
+<li>Three shapes would be three ways to do one thing.</li>
+<li>Each extra shape needs its own bridge to forms, slots and extensions: more public API to document, test and support.</li>
+<li>A module can still mount another framework inside a React component it owns. Core does not prevent it or support it.</li>
+</ul>
+</div>
+
+<h2 id="registry">2. Replace a component: a registry in YAML</h2>
+<p class="lead">One way to replace a core component or add a component for a module's own class: a registry in YAML, keyed by PHP class name. It works like the PHP Injector.</p>
+<p class="source">Source: plan/index.md (section 6), plan/level6.md</p>
+<div class="card">
+<div class="pair">
+<div>
+<h4>PHP today: replace a class</h4>
+<pre><code>SilverStripe\Core\Injector\Injector:
+  SilverStripe\Forms\TextField:
+    class: App\Forms\FancyTextField</code></pre>
+</div>
+<div>
+<h4>CMS 7: replace its component</h4>
+<pre><code>SilverStripe\Admin\ComponentRegistry:
+  SilverStripe\Forms\TextField:
+    component: 'acme/fancy-fields:client/dist/FancyTextField.js'</code></pre>
+</div>
+</div>
+<h4>Replace it only in some places with <code>within</code></h4>
+<pre><code>SilverStripe\Admin\ComponentRegistry:
+  SilverStripe\Forms\TextField:
+    component: 'acme/fancy-fields:client/dist/FancyTextField.js'
+    within:
+      DNADesign\Elemental\Models\BaseElement: 'acme/fancy-fields:client/dist/CompactTextField.js'
+      App\Forms\AddressCompositeField: 'acme/fancy-fields:client/dist/AddressFinderField.js'</code></pre>
+<ul>
+<li><code>CompactTextField</code> is used when the user edits any block. <code>AddressFinderField</code> is used for a <code>TextField</code> inside an <code>AddressCompositeField</code>, in any form.</li>
+<li>Core walks up from the field, through its parent fields, to the record and then to the class that builds the form. The nearest match wins, and subclasses match.</li>
+<li>Every key is a PHP class. There are no form names, scope strings or priority numbers.</li>
+<li>A subclass with no entry uses its parent's entry. A project overrides a module with a later fragment, such as <code>After: '#acme-fancy-fields'</code>.</li>
+</ul>
+<h4>Wrap a core component: normal React</h4>
+<pre><code>// FancyTextField.js
+import { TextField } from '@silverstripe/admin';
+
+export default (props) =&gt; (
+  &lt;div className="fancy"&gt;
+    &lt;TextField {...props} /&gt;
+  &lt;/div&gt;
+);</code></pre>
+<div class="info">Why not replace core files through the import map? Then every core JS file becomes public API, and a rename in core breaks a module with no clear error. Only components keyed by a PHP class can be replaced: a form field, an admin section, a record, an MFA method, a link type or a report.</div>
+</div>
+
+<h2 id="extensions">3. JS extensions: like PHP extensions</h2>
+<p class="lead">A JS extension changes a value before core uses it, as <code>updateCMSFields()</code> does in PHP. YAML attaches it to a PHP class under <code>extensions:</code>. It is a file that exports an object with <code>update*</code> methods.</p>
+<p class="source">Source: plan/index.md (section 7), plan/level7.md ("JS extensions")</p>
+<div class="card">
+<div class="pair">
+<div>
+<h4>PHP extension</h4>
+<pre><code>SilverStripe\CMS\Model\SiteTree:
+  extensions:
+    acme-page-extension: Acme\PageExtension</code></pre>
+<pre><code>class PageExtension extends Extension
+{
+    protected function updateCMSFields(
+        FieldList $fields
+    ): void {
+        $fields-&gt;removeByName('Content');
+    }
+}</code></pre>
+</div>
+<div>
+<h4>JS extension</h4>
+<pre><code>SilverStripe\Admin\ComponentRegistry:
+  DNADesign\Elemental\Models\BaseElement:
+    extensions:
+      acme-block-extension: 'acme/module:client/dist/BlockExtension.js'</code></pre>
+<pre><code>// BlockExtension.js
+export default {
+  updateTitle(title, type) {
+    return `${title} (${type})`;
+  },
+};</code></pre>
+</div>
+</div>
+<h4>A fuller example: change the action menu of a block</h4>
+<pre><code>// BlockExtension.js
+import MoveMenuItem from './MoveMenuItem'; // a React component in this module that opens its own modal
+
+export default {
+  updateActionMenu(items, block) {
+    return [
+      ...items.filter((item) =&gt; item.name !== 'duplicate'), // removes "Duplicate" from Elemental
+      { name: 'copy-link', label: 'Copy link', onClick: () =&gt; navigator.clipboard.writeText(block.link) },
+      { name: 'move', label: 'Move', Component: MoveMenuItem }, // the action menu decides what to do with each item
+    ];
+  },
+};</code></pre>
+<p>Core calls <code>updateActionMenu</code> on each extension of <code>BaseElement</code> that has the method, as <code>extend('updateActionMenu', ...)</code> does in PHP.</p>
+<h4>The same rules as PHP</h4>
+<ul>
+<li>The first argument is the value to change. The others, such as <code>block</code>, are read-only. The method returns the changed value.</li>
+<li>An extension on a class also applies to its subclasses.</li>
+<li>Entries are keyed, so a project sets a key to <code>null</code> to remove an extension, or to another file to replace it.</li>
+<li>Order is config order (<code>Before</code> and <code>After</code>).</li>
+<li>Each list item has a <code>name</code>, so an extension can find an item to remove. The <code>name</code> of a core item is public API.</li>
+<li>Methods are synchronous. Anything that waits for the user or the server is a component or a PHP action.</li>
+<li>No <code>app</code> object: an extension imports plain functions, such as a toast or the API client, from <code>@silverstripe/admin</code>.</li>
+<li>Data and lists that PHP controls stay in PHP. A JS extension is for behaviour that only exists in the browser.</li>
+</ul>
+</div>
+
+<h2 id="slots">4. Slots: add to a position</h2>
+<p class="lead">A slot is a named position in a core component where modules add their own components, such as a button in the block toolbar. Slots are declared under <code>slots:</code> on the PHP class that owns them.</p>
+<p class="source">Source: plan/level7.md ("Slots")</p>
+<div class="card">
+<h4>Add two buttons to the Elemental toolbar and remove one</h4>
+<pre><code># acme/module/_config/admin.yml
+---
+Name: acme-module
+After: '#elemental'
+---
+SilverStripe\Admin\ComponentRegistry:
+  DNADesign\Elemental\Forms\ElementalAreaField:
+    slots:
+      toolbar:
+        acme-preview-button: 'acme/module:client/dist/PreviewButton.js'
+        acme-share-button: 'acme/module:client/dist/ShareButton.js'
+        elemental-add-block-button: null   # removes the "Add block" button from Elemental</code></pre>
+<pre><code>// PreviewButton.js
+export default (props) =&gt; &lt;a href={props.page.previewLink}&gt;Preview&lt;/a&gt;;</code></pre>
+<ul>
+<li>A slot holds any number of components from any number of modules, shown in config order.</li>
+<li><code>After: '#elemental'</code> merges this fragment after Elemental's, so the <code>null</code> entry removes Elemental's button.</li>
+<li>Slot names belong to their class, so they do not collide. Core passes props, such as the area and its page.</li>
+</ul>
+</div>
+
+<h2 id="checked">5. Checked against real code</h2>
+<p class="source">Source: plan/level6.md, plan/level7.md ("How Elemental maps to this")</p>
+<div class="card">
+<p>Every JS extension point in recipe-cms and Elemental is covered by components, extensions and slots, with a few rules: PHP resolves the registry and sends file URLs to the browser, one PHP class has one view, and <code>within</code> walks from the field up to the class that builds the form. For Elemental:</p>
+<ul>
+<li>The 15 internal components it registers only to inject them become plain imports.</li>
+<li>The block actions become items of <code>updateActionMenu</code> on <code>BaseElement</code>.</li>
+<li>The Redux reducer, the Entwine mount and the save coordination with the page form go with the REST API.</li>
+</ul>
+</div>
+
+<h2 id="minor">Minor points</h2>
+<p class="source">Source: plan/level5.md ("Load sequence", "Browser support")</p>
+<div class="card">
+<ul>
+<li>Cache key: a hash of the file content, not the Composer package versions. The version does not change for <code>dev-main</code> or project code.</li>
+<li><code>es-module-shims</code>: current browsers do not need it. It is added only if the supported browser list needs it.</li>
+</ul>
+</div>
+
+<footer>Derived from <code>plan/index.md</code> (sections 5, 6 and 7), <code>plan/level5.md</code>, <code>plan/level6.md</code> and <code>plan/level7.md</code>. Where this page and those sources disagree, the sources are right.</footer>
+</main>
+</div>
+<script>
+(function(){
+  var all=[].slice.call(document.querySelectorAll('nav a[href^="#"]'));
+  var map={};all.forEach(function(a){map[a.getAttribute('href').slice(1)]=a;});
+  var targets=Object.keys(map).map(function(id){return document.getElementById(id);}).filter(Boolean);
+  function spy(){
+    var cur=null,y=window.scrollY+80;
+    targets.forEach(function(el){if(el.getBoundingClientRect().top+window.scrollY<=y)cur=el.id;});
+    all.forEach(function(a){a.classList.toggle('on',cur&&a===map[cur]);});
+  }
+  window.addEventListener('scroll',spy,{passive:true});spy();
+})();
+</script>
+</body>
+</html>
