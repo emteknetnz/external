@@ -27,9 +27,24 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
+      - name: Collect HTML files
+        run: |
+          mkdir _site
+          find . -name '*.html' -not -path './.git/*' -not -path './_site/*' \
+            -not -path './index.html' -exec cp --parents {} _site/ \;
+
+      - name: Generate index.html
+        run: |
+          cd _site
+          find . -name '*.html' -not -path './index.html' | sed 's|^\./||' | sort | while read -r f; do
+            title=$(sed -n 's:.*<title>\(.*\)</title>.*:\1:p' "$f" | head -n 1)
+            echo "  <li><a href=\"$f\">${title:-$f}</a></li>"
+          done > ../list.html
+          sed -e '/{{LIST}}/{r ../list.html' -e 'd}' ../index.template > index.html
+
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
 
       - id: deployment
         uses: actions/deploy-pages@v4
